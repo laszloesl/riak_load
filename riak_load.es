@@ -18,14 +18,13 @@ main([]) ->
 
     application:set_env(riakc, allow_listing, true),
 
-    Riak = connect_to_riak(RiakHost, RiakPort),
     spawn(
         fun () ->
-            insert_random_data(Riak, InsertionDelay, MaxInsertions)
+            insert_random_data(RiakHost, RiakPort, InsertionDelay, MaxInsertions)
         end),
     spawn(
         fun () ->
-            query_and_delete_random_data(Riak, DeletionDelay, MaxDeletions)
+            query_and_delete_random_data(RiakHost, RiakPort, DeletionDelay, MaxDeletions)
         end),
     receive
         _Any -> ok
@@ -33,6 +32,22 @@ main([]) ->
 
 
 %%% Connection
+
+wait_for_riak(Host, Port) ->
+    wait_for_riak(Host, Port, 15).
+wait_for_riak(_Host, _Port, 0) -> error;
+wait_for_riak(Host, Port, Retries) ->
+    try gen_tcp:connect(Host, Port, []) of
+        {ok, _} ->
+            ok;
+        _ ->
+            timer:sleep(3000),
+            wait_for_riak(Host, Port, Retries - 1)
+    catch
+        _:_ ->
+            timer:sleep(3000),
+            wait_for_riak(Host, Port, Retries - 1)
+    end.
 
 connect_to_riak(RiakHost, RiakPort) ->
     connect_to_riak(RiakHost, RiakPort, 15).
@@ -55,6 +70,11 @@ connect_to_riak(RiakHost, RiakPort, Retries) ->
 
 %%% Generating and putting data
 
+insert_random_data(RiakHost, RiakPort, Delay, MaxInsertions) ->
+    ok = wait_for_riak(RiakHost, RiakPort),
+    Riak = connect_to_riak(RiakHost, RiakPort),
+    insert_random_data(Riak, Delay, MaxInsertions).
+
 insert_random_data(Riak, Delay, MaxInsertions) ->
     NrInsertions = rand:uniform(MaxInsertions),
     put_many(Riak, NrInsertions),
@@ -75,6 +95,11 @@ put_to_riak(Riak, Objs) ->
 
 
 %%% Reading and deleting data
+
+query_and_delete_random_data(RiakHost, RiakPort, Delay, MaxDeletions) ->
+    ok = wait_for_riak(RiakHost, RiakPort),
+    Riak = connect_to_riak(RiakHost, RiakPort),
+    query_and_delete_random_data(Riak, Delay, MaxDeletions).
 
 query_and_delete_random_data(Riak, Delay, MaxDeletions) ->
     Deletions = rand:uniform(MaxDeletions),
