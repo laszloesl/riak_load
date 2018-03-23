@@ -44,9 +44,11 @@ connect_to_riak(RiakHost, RiakPort, Retries) ->
             pong = riakc_pb_socket:ping(Pid),
             Pid;
         {error, _} ->
+            timer:sleep(3000),
             connect_to_riak(RiakHost, RiakPort, Retries - 1)
     catch
         _:_ ->
+            timer:sleep(3000),
             connect_to_riak(RiakHost, RiakPort, Retries - 1)
     end.
 
