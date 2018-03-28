@@ -30,8 +30,8 @@ spawn_and_loop() ->
         end),
     receive
         {'DOWN', _, _, _, _} ->
-            exit(PidI, "Restarting"),
-            exit(PidD, "Restarting"),
+            exit(PidI, kill),
+            exit(PidD, kill),
             spawn_and_loop()
     end.
 
