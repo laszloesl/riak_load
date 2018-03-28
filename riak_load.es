@@ -9,6 +9,10 @@
 %%% Main
 
 main([]) ->
+    application:set_env(riakc, allow_listing, true),
+    spawn_and_loop().
+
+spawn_and_loop() ->
     RiakHost = os:getenv("RIAK_HOST", "localhost"),
     RiakPort = list_to_integer(os:getenv("RIAK_PORT", "8087")),
     MaxInsertions = list_to_integer(os:getenv("MAX_INSERTIONS", "100")),
@@ -16,38 +20,23 @@ main([]) ->
     InsertionDelay = list_to_integer(os:getenv("INSERTION_DELAY", "10000")),
     DeletionDelay = list_to_integer(os:getenv("DELETION_DELAY", "10000")),
 
-    application:set_env(riakc, allow_listing, true),
-
-    spawn(
+    {PidI, _} = spawn_monitor(
         fun () ->
             insert_random_data(RiakHost, RiakPort, InsertionDelay, MaxInsertions)
         end),
-    spawn(
+    {PidD, _} = spawn_monitor(
         fun () ->
             query_and_delete_random_data(RiakHost, RiakPort, DeletionDelay, MaxDeletions)
         end),
     receive
-        _Any -> ok
+        {'DOWN', _, _, _, _} ->
+            exit(PidI, "Restarting"),
+            exit(PidD, "Restarting"),
+            spawn_and_loop()
     end.
 
 
 %%% Connection
-
-wait_for_riak(Host, Port) ->
-    wait_for_riak(Host, Port, 15).
-wait_for_riak(_Host, _Port, 0) -> error;
-wait_for_riak(Host, Port, Retries) ->
-    try gen_tcp:connect(Host, Port, []) of
-        {ok, _} ->
-            ok;
-        _ ->
-            timer:sleep(3000),
-            wait_for_riak(Host, Port, Retries - 1)
-    catch
-        _:_ ->
-            timer:sleep(3000),
-            wait_for_riak(Host, Port, Retries - 1)
-    end.
 
 connect_to_riak(RiakHost, RiakPort) ->
     connect_to_riak(RiakHost, RiakPort, 15).
@@ -71,7 +60,6 @@ connect_to_riak(RiakHost, RiakPort, Retries) ->
 %%% Generating and putting data
 
 insert_random_data(RiakHost, RiakPort, Delay, MaxInsertions) ->
-    ok = wait_for_riak(RiakHost, RiakPort),
     Riak = connect_to_riak(RiakHost, RiakPort),
     insert_random_data(Riak, Delay, MaxInsertions).
 
@@ -97,7 +85,6 @@ put_to_riak(Riak, Objs) ->
 %%% Reading and deleting data
 
 query_and_delete_random_data(RiakHost, RiakPort, Delay, MaxDeletions) ->
-    ok = wait_for_riak(RiakHost, RiakPort),
     Riak = connect_to_riak(RiakHost, RiakPort),
     query_and_delete_random_data(Riak, Delay, MaxDeletions).
 
