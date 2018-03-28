@@ -20,16 +20,18 @@ spawn_and_loop() ->
     InsertionDelay = list_to_integer(os:getenv("INSERTION_DELAY", "10000")),
     DeletionDelay = list_to_integer(os:getenv("DELETION_DELAY", "10000")),
 
-    {PidI, _} = spawn_monitor(
+    {PidI, MonitI} = spawn_monitor(
         fun () ->
             insert_random_data(RiakHost, RiakPort, InsertionDelay, MaxInsertions)
         end),
-    {PidD, _} = spawn_monitor(
+    {PidD, MonitD} = spawn_monitor(
         fun () ->
             query_and_delete_random_data(RiakHost, RiakPort, DeletionDelay, MaxDeletions)
         end),
     receive
         {'DOWN', _, _, _, _} ->
+            demonitor(MonitI),
+            demonitor(MonitD),
             exit(PidI, kill),
             exit(PidD, kill),
             spawn_and_loop()
