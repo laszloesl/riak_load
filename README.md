@@ -1,7 +1,7 @@
 # riak_load
-Simple Erlang escript to generate some load on Riak
+Simple Erlang application to generate some load on Riak
 
-The script takes parameters from environment variables in order
+The application takes parameters from environment variables in order
 to make docker integration flexible. The following variables
 can be set, displayed with the default values:
 
@@ -12,14 +12,15 @@ can be set, displayed with the default values:
 * `MAX_DELETIONS=100` - At most this many deletions are executed in every iteration.
 * `DELETION_DELAY=10000` - The iterations are this many milliseconds apart for deletions.
 
-To run the script separately the following example command can be used:
+To run the application separately the following example commands can be used:
 ```
-export ERL_LIBS=${RIAK_ERLANG_CLIENT}:${RIAK_ERLANG_CLIENT}/deps/riak_pb/:${RIAK_ERLANG_CLIENT}/deps/hamcrest/
+make
 export RIAK_HOST=riak.com
 export MAX_INSERTIONS=20
-./riak_load.es
+erl -pa ${RIAK_ERLANG_CLIENT}/ebin:${RIAK_ERLANG_CLIENT}/deps/*/ebin:./ebin
+> application:ensure_started(riak_load).
 ```
-assuming that `${RIAK_ERLANG_CLIENT}` points to the cloned riak-erlang-client repo.
+assuming that `${RIAK_ERLANG_CLIENT}` points to the cloned and compiled riak-erlang-client repo.
 
 ## Prerequisites
 
@@ -35,5 +36,5 @@ make
 It is more convenient to run the script in a Docker container. To build
 the image manually execute:
 ```
-docker build -t riak_test .
+make docker
 ```
