@@ -1,0 +1,5 @@
+ebin
+.erlang.mk
+riak_load.d
+tags
+*.swp
